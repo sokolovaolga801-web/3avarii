@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ОПО тренажёр: паттерны + карточки</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* для удобства drag&drop */
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: #ffffff; /* белый фон */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* основной контейнер — белый фон, легкая тень */
+        .app {
+            max-width: 1100px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* шапка */
+        .header {
+            background: #1e40af; /* синий */
+            padding: 0.8rem 1.5rem;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        .badge {
+            background: #3b82f6;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* вкладки */
+        .tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 0 1.5rem;
+            gap: 6px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .tab-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 8px 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-radius: 1rem 1rem 0 0;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #1e293b;
+        }
+        .tab-btn.active {
+            background: #ffffff;
+            border-bottom: 3px solid #3b82f6;
+            color: #1e40af;
+        }
+        .tab-pane {
+            display: none;
+            padding: 1.5rem;
+            background: #ffffff;
+        }
+        .tab-pane.active-pane {
+            display: block;
+        }
+
+        /* списки паттернов */
+        .pattern-list {
+            list-style: none;
+            margin: 0 0 1.2rem 0;
+            padding: 0;
+        }
+        .pattern-list li {
+            margin: 8px 0;
+            background: #f8fafc;
+            padding: 6px 14px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #e2e8f0;
+        }
+        .pattern-list label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            cursor: pointer;
+            font-weight: 500;
+            color: #0f172a;
+            font-size: 0.85rem;
+        }
+        .pattern-list input {
+            width: 16px;
+            height: 16px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+        .check-block-btn {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-right: 15px;
+        }
+        .block-status {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .status-ok {
+            color: #16a34a;
+        }
+        .status-error {
+            color: #dc2626;
+        }
+        .progress-message {
+            text-align: center;
+            margin: 10px 0 0;
+            font-weight: bold;
+            font-size: 0.85rem;
+            background: #ffffff;
+            padding: 8px;
+        }
+        .unlock-btn {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin: 15px auto 10px;
+            display: block;
+        }
+
+        /* ИГРОВАЯ ЗОНА: карточка сверху, столбцы снизу */
+        .game-zone {
+            padding: 1.5rem;
+            background: #ffffff;
+            display: none;
+        }
+        .game-zone.visible {
+            display: block;
+        }
+        .current-card-area {
+            background: #f8fafc;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .current-card-title {
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+        .drag-card {
+            background: white;
+            border-radius: 1.2rem;
+            padding: 1rem;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            cursor: grab;
+            border-left: 6px solid #3b82f6;
+            text-align: left;
+            color: #0f172a;
+            max-width: 90%;
+            margin: 0 auto;
+        }
+        .drag-card:active {
+            cursor: grabbing;
+        }
+        .drag-card.dragging {
+            opacity: 0.4;
+        }
+        .empty-stack-msg {
+            text-align: center;
+            padding: 20px;
+            background: #f1f5f9;
+            border-radius: 1rem;
+            font-style: italic;
+            color: #475569;
+        }
+
+        /* три колонки */
+        .columns-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .column {
+            flex: 1;
+            min-width: 180px;
+            background: #ffffff;
+            border-radius: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-top: 6px solid;
+            border: 1px solid #e2e8f0;
+            border-top-width: 6px;
+        }
+        .column-header {
+            background: #f8fafc;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .column-cards {
+            min-height: 200px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #ffffff;
+            transition: background 0.1s;
+        }
+        .column-cards.drag-over {
+            background: #eff6ff;
+        }
+        .placed-card {
+            background: white;
+            border-radius: 0.8rem;
+            padding: 8px;
+            font-size: 0.7rem;
+            border-left: 4px solid;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            word-break: break-word;
+        }
+        .placed-card.correct-mark {
+            background: #dcfce7;
+            border-left-color: #16a34a;
+        }
+        .placed-card.wrong-mark {
+            background: #fee2e2;
+            border-left-color: #dc2626;
+        }
+        .accident-col { border-top-color: #dc2626; }
+        .incident-col { border-top-color: #f97316; }
+        .work-col { border-top-color: #16a34a; }
+
+        .game-footer {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .game-btn {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .game-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        .result-message {
+            text-align: center;
+            font-size: 0.8rem;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 750px) {
+            .columns-row {
+                flex-direction: column;
+            }
+            .drag-card {
+                font-size: 0.75rem;
+            }
+            .tab-btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <h1>⚠️ ОПО: паттерны → ситуации</h1>
+        <div class="badge" id="stageBadge">Этап 1: изучите паттерны</div>
+    </div>
+
+    <!-- Вкладки паттернов -->
+    <div class="tabs" id="tabsContainer">
+        <button class="tab-btn active" data-tab="accident">🔴 Авария</button>
+        <button class="tab-btn" data-tab="incident">🟠 Инцидент</button>
+        <button class="tab-btn" data-tab="work">🟢 Рабочий момент</button>
+    </div>
+
+    <!-- Панели паттернов -->
+    <div id="tabAccident" class="tab-pane active-pane">
+        <div class="pattern-list" id="accidentList"></div>
+        <button class="check-block-btn" data-type="accident">✅ Проверить блок</button>
+        <span id="accidentStatus" class="block-status"></span>
+    </div>
+    <div id="tabIncident" class="tab-pane">
+        <div class="pattern-list" id="incidentList"></div>
+        <button class="check-block-btn" data-type="incident">✅ Проверить блок</button>
+        <span id="incidentStatus" class="block-status"></span>
+    </div>
+    <div id="tabWork" class="tab-pane">
+        <div class="pattern-list" id="workList"></div>
+        <button class="check-block-btn" data-type="work">✅ Проверить блок</button>
+        <span id="workStatus" class="block-status"></span>
+    </div>
+
+    <div class="progress-message" id="patternsProgress"></div>
+    <button id="unlockGameBtn" class="unlock-btn hidden">🎮 Перейти к карточкам-ситуациям</button>
+
+    <!-- ИГРОВАЯ ЗОНА: карточка сверху, столбцы снизу -->
+    <div id="gameZone" class="game-zone">
+        <div class="current-card-area">
+            <div class="current-card-title">📄 Текущая ситуация (перетащите в столбец)</div>
+            <div id="dragCardContainer"></div>
+        </div>
+        <div class="columns-row">
+            <div class="column accident-col" data-col-type="accident" id="colAccident">
+                <div class="column-header">🔴 АВАРИЯ</div>
+                <div class="column-cards" id="colAccidentCards"></div>
+            </div>
+            <div class="column incident-col" data-col-type="incident" id="colIncident">
+                <div class="column-header">🟠 ИНЦИДЕНТ</div>
+                <div class="column-cards" id="colIncidentCards"></div>
+            </div>
+            <div class="column work-col" data-col-type="work" id="colWork">
+                <div class="column-header">🟢 РАБОЧИЙ МОМЕНТ</div>
+                <div class="column-cards" id="colWorkCards"></div>
+            </div>
+        </div>
+        <div class="game-footer">
+            <button id="checkGameBtn" class="game-btn" disabled>✅ ПРОВЕРИТЬ</button>
+            <button id="resetGameBtn" class="game-btn">🔄 ЗАНОВО</button>
+        </div>
+        <div id="gameResult" class="result-message"></div>
+    </div>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // ПАТТЕРНЫ (эталонные данные для трёх блоков) — порядок будет перемешан при рендере
+    // --------------------------------------------------------------
+    const patternsRaw = {
+        accident: {
+            items: [
+                { text: "Разрушение зданий, сооружений или технических устройств", correct: true },
+                { text: "Пострадавшие (травмы, госпитализация, смерть)", correct: true },
+                { text: "Неконтролируемый выброс опасного вещества с превышением порогов", correct: true },
+                { text: "Пожар, взрыв с остановкой производства", correct: true },
+                { text: "Отказ оборудования без последствий для людей", correct: false },
+                { text: "Срабатывание предохранительного клапана (штатное)", correct: false },
+                { text: "Плановый ремонт по графику", correct: false }
+            ]
+        },
+        incident: {
+            items: [
+                { text: "Отказ оборудования, не приведший к остановке производства", correct: true },
+                { text: "Срабатывание систем противоаварийной защиты (предотвратило аварию)", correct: true },
+                { text: "Микротрещина на трубопроводе с незначительной утечкой", correct: true },
+                { text: "Короткое замыкание, отключённое автоматом, без пожара", correct: true },
+                { text: "Разлив опасного вещества в поддон (локализован)", correct: true },
+                { text: "Разрушение здания с жертвами", correct: false },
+                { text: "Плановое техническое обслуживание", correct: false },
+                { text: "Замена датчика по наряду-допуску", correct: false }
+            ]
+        },
+        work: {
+            items: [
+                { text: "Плановое техническое обслуживание по графику", correct: true },
+                { text: "Проведение обхода и фиксация штатных показаний", correct: true },
+                { text: "Замена оборудования по наряду-допуску с отключением участка", correct: true },
+                { text: "Пуск и остановка по технологической инструкции", correct: true },
+                { text: "Выполнение регламентных работ без отклонений", correct: true },
+                { text: "Аварийный выброс опасного вещества", correct: false },
+                { text: "Взрыв с повреждением оборудования", correct: false },
+                { text: "Стук в редукторе (неисправность)", correct: false }
+            ]
+        }
+    };
+
+    // Ситуации для игры (12 штук) — НЕ МЕНЯЕМ
+    const allSituations = [
+        { text: "В котельной давление пара превысило допустимое на 5%. Сработал предохранительный клапан, давление упало до нормы. Пострадавших нет, оборудование не повреждено.", correct: "incident" },
+        { text: "На резервуаре с нефтью оторвалась дыхательная арматура, произошёл выброс паров без воспламенения. За 15 минут вытекло 3 тонны нефти в обвалование.", correct: "accident" },
+        { text: "Слесарь по плану (раз в месяц) проверяет затяжку фланцев на трубопроводе аммиака. Использует динамометрический ключ. Всё в норме.", correct: "work" },
+        { text: "Взрыв газовоздушной смеси в угольной мельнице на ТЭС. Разрушена мельница, двое рабочих получили ожоги. Производство остановлено.", correct: "accident" },
+        { text: "Оператор крана-манипулятора услышал посторонний стук в редукторе. Сразу остановил кран, сообщил механику. Других отклонений нет, груз не падал.", correct: "incident" },
+        { text: "Дежурный персонал проводит смену показаний манометров на компрессорной станции. Все показания в пределах рабочего диапазона.", correct: "work" },
+        { text: "На трубопроводе пара образовалась свищ (струя пара через микротрещину). Пар выходит под давлением, но без разрушения трубы. Система автоматически не отключилась.", correct: "incident" },
+        { text: "В цехе серной кислоты упала со стеллажа бутыль с реагентом (5 литров). Произошло разливание в поддон. Никто не пострадал, вентиляция включена.", correct: "incident" },
+        { text: "Провалился грунт над подземным газопроводом из-за размыва. Газопровод не повреждён.", correct: "incident" },
+        { text: "Планово-предупредительный ремонт задвижки на мазутопроводе. Наряд-допуск оформлен, персонал обучен, отключение и сброс давления выполнены.", correct: "work" },
+        { text: "В резервуарном парке произошло короткое замыкание в электрощитовой. Искрение, но автоматический выключатель отключил участок. Пожара нет.", correct: "incident" },
+        { text: "При проведении газоопасных работ произошёл неконтролируемый выброс сероводорода, двое рабочих госпитализированы, цех обесточен аварийно.", correct: "accident" }
+    ];
+
+    // Состояния паттернов
+    let userChecks = { accident: [], incident: [], work: [] };
+    let blockValid = { accident: false, incident: false, work: false };
+
+    // DOM элементы
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panes = document.querySelectorAll('.tab-pane');
+    const patternsProgress = document.getElementById('patternsProgress');
+    const unlockBtn = document.getElementById('unlockGameBtn');
+    const gameZone = document.getElementById('gameZone');
+    const stageBadge = document.getElementById('stageBadge');
+
+    // Функция для случайного перемешивания массива
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // Построение списка паттернов с ПЕРЕМЕШИВАНИЕМ порядка элементов
+    function buildPatternList(type, containerId) {
+        const data = patternsRaw[type];
+        // Создаём копию массива элементов и перемешиваем
+        const shuffledItems = shuffleArray([...data.items]);
+        const container = document.getElementById(containerId);
+        const ul = document.createElement('ul');
+        ul.className = 'pattern-list';
+        userChecks[type] = new Array(shuffledItems.length).fill(false);
+        shuffledItems.forEach((item, idx) => {
+            const li = document.createElement('li');
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = false;
+            // сохраняем правильное значение в dataset для проверки
+            cb.dataset.correctValue = item.correct;
+            cb.addEventListener('change', (e) => {
+                userChecks[type][idx] = e.target.checked;
+                if (blockValid[type]) {
+                    blockValid[type] = false;
+                    updateStatusUI(type);
+                    updateUnlockButton();
+                }
+            });
+            const span = document.createElement('span');
+            span.innerText = item.text;
+            label.appendChild(cb);
+            label.appendChild(span);
+            li.appendChild(label);
+            ul.appendChild(li);
+            // также сохраним в userChecks соответствующее значение (изначально false)
+        });
+        container.innerHTML = '';
+        container.appendChild(ul);
+        // привязываем правильные значения для проверки к элементам списка (через dataset)
+        const items = ul.querySelectorAll('li');
+        items.forEach((li, idx) => {
+            const cb = li.querySelector('input');
+            const correctVal = shuffledItems[idx].correct;
+            cb.dataset.correctValue = correctVal;
+        });
+    }
+
+    // Обновление статуса блока (используем данные из чекбоксов)
+    function updateStatusUI(type) {
+        const statusSpan = document.getElementById(`${type}Status`);
+        if (blockValid[type]) {
+            statusSpan.innerHTML = '✅ Верно';
+            statusSpan.className = 'block-status status-ok';
+        } else {
+            statusSpan.innerHTML = '❌ Ошибки';
+            statusSpan.className = 'block-status status-error';
+        }
+    }
+
+    // Проверка блока: сравниваем состояние чекбоксов с правильными значениями
+    function checkBlock(type) {
+        const container = document.getElementById(`${type}List`);
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+        let ok = true;
+        checkboxes.forEach(cb => {
+            const isChecked = cb.checked;
+            const correctValue = cb.dataset.correctValue === 'true';
+            if (isChecked !== correctValue) {
+                ok = false;
+            }
+        });
+        blockValid[type] = ok;
+        updateStatusUI(type);
+        updateUnlockButton();
+    }
+
+    function updateUnlockButton() {
+        const allPassed = blockValid.accident && blockValid.incident && blockValid.work;
+        if (allPassed) {
+            patternsProgress.innerHTML = '✅ Все три блока паттернов пройдены! Теперь можно перейти к карточкам.';
+            unlockBtn.classList.remove('hidden');
+        } else {
+            patternsProgress.innerHTML = '⚠️ Пройдите все три блока (Авария, Инцидент, Рабочий момент), чтобы открыть карточки.';
+            unlockBtn.classList.add('hidden');
+        }
+    }
+
+    // Инициализация вкладок
+    function initTabs() {
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.getAttribute('data-tab');
+                tabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                panes.forEach(pane => pane.classList.remove('active-pane'));
+                document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active-pane');
+            });
+        });
+    }
+
+    // --------------------------------------------------------------
+    // ИГРА: карточка сверху, столбцы снизу (drag & drop) — НИЧЕГО НЕ МЕНЯЕМ
+    // --------------------------------------------------------------
+    let remainingCards = [];
+    let isGameChecked = false;
+    let totalPlacedCount = 0;
+    let totalCardsCount = 0;
+
+    const dragContainer = document.getElementById('dragCardContainer');
+    const colAccident = document.getElementById('colAccidentCards');
+    const colIncident = document.getElementById('colIncidentCards');
+    const colWork = document.getElementById('colWorkCards');
+    const checkGameBtn = document.getElementById('checkGameBtn');
+    const resetGameBtn = document.getElementById('resetGameBtn');
+    const gameResultDiv = document.getElementById('gameResult');
+
+    function shuffleArrayForGame(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function updateGameControls() {
+        if (remainingCards.length === 0 && !isGameChecked) {
+            checkGameBtn.disabled = false;
+        } else {
+            checkGameBtn.disabled = true;
+        }
+    }
+
+    function renderCurrentCard() {
+        dragContainer.innerHTML = '';
+        if (remainingCards.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-stack-msg';
+            emptyDiv.innerText = '✨ Все ситуации распределены ✨';
+            dragContainer.appendChild(emptyDiv);
+            updateGameControls();
+            return;
+        }
+        const cardData = remainingCards[0];
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'drag-card';
+        cardDiv.setAttribute('draggable', 'true');
+        cardDiv.setAttribute('data-text', cardData.text);
+        cardDiv.setAttribute('data-correct', cardData.correct);
+        cardDiv.innerText = cardData.text;
+        cardDiv.addEventListener('dragstart', handleDragStart);
+        cardDiv.addEventListener('dragend', handleDragEnd);
+        dragContainer.appendChild(cardDiv);
+        updateGameControls();
+    }
+
+    let dragSourceNode = null;
+    function handleDragStart(e) {
+        if (isGameChecked) {
+            e.preventDefault();
+            return false;
+        }
+        if (remainingCards.length === 0) {
+            e.preventDefault();
+            return false;
+        }
+        dragSourceNode = this;
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            text: this.getAttribute('data-text'),
+            correctType: this.getAttribute('data-correct')
+        }));
+        this.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+    function handleDragEnd(e) {
+        if (dragSourceNode) dragSourceNode.classList.remove('dragging');
+        dragSourceNode = null;
+        document.querySelectorAll('.column-cards').forEach(col => col.classList.remove('drag-over'));
+    }
+
+    function setupDropTargets() {
+        const dropZones = document.querySelectorAll('.column-cards');
+        dropZones.forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                zone.classList.add('drag-over');
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('drag-over');
+            });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+                if (isGameChecked) return;
+                if (remainingCards.length === 0) return;
+                const column = zone.closest('.column');
+                if (!column) return;
+                const colType = column.getAttribute('data-col-type');
+                if (!colType) return;
+                const currentCard = remainingCards[0];
+                if (!currentCard) return;
+
+                const placedDiv = document.createElement('div');
+                placedDiv.className = 'placed-card';
+                placedDiv.innerText = currentCard.text;
+                placedDiv.setAttribute('data-correct-type', currentCard.correct);
+                placedDiv.setAttribute('data-placed-col', colType);
+                if (colType === 'accident') colAccident.appendChild(placedDiv);
+                else if (colType === 'incident') colIncident.appendChild(placedDiv);
+                else if (colType === 'work') colWork.appendChild(placedDiv);
+
+                remainingCards.shift();
+                renderCurrentCard();
+                if (remainingCards.length === 0) {
+                    updateGameControls();
+                }
+            });
+        });
+    }
+
+    function checkGame() {
+        if (remainingCards.length !== 0) {
+            gameResultDiv.innerText = "Сначала распределите все карточки!";
+            return;
+        }
+        if (isGameChecked) {
+            gameResultDiv.innerText = "Проверка уже выполнена. Нажмите «ЗАНОВО», чтобы повторить.";
+            return;
+        }
+        let total = 0;
+        let correct = 0;
+
+        function processColumn(columnElem, expectedType) {
+            const cards = columnElem.querySelectorAll('.placed-card');
+            cards.forEach(card => {
+                total++;
+                const realType = card.getAttribute('data-correct-type');
+                const isCorrect = (realType === expectedType);
+                if (isCorrect) {
+                    correct++;
+                    card.classList.add('correct-mark');
+                    card.classList.remove('wrong-mark');
+                } else {
+                    card.classList.add('wrong-mark');
+                    card.classList.remove('correct-mark');
+                }
+            });
+        }
+        processColumn(colAccident, 'accident');
+        processColumn(colIncident, 'incident');
+        processColumn(colWork, 'work');
+
+        isGameChecked = true;
+        checkGameBtn.disabled = true;
+        const percent = Math.round((correct / total) * 100);
+        let msg = `✅ Результат: ${correct} из ${total} верно (${percent}%). `;
+        if (percent === 100) msg += "Превосходно!";
+        else if (percent >= 80) msg += "Хорошо, но есть ошибки.";
+        else msg += "Повторите правила различия.";
+        gameResultDiv.innerText = msg;
+    }
+
+    function resetGame() {
+        const shuffled = shuffleArrayForGame([...allSituations]);
+        remainingCards = shuffled;
+        totalCardsCount = remainingCards.length;
+        isGameChecked = false;
+        colAccident.innerHTML = '';
+        colIncident.innerHTML = '';
+        colWork.innerHTML = '';
+        gameResultDiv.innerText = '';
+        renderCurrentCard();
+        updateGameControls();
+    }
+
+    // Переход к игре после успешных паттернов
+    function unlockGame() {
+        if (blockValid.accident && blockValid.incident && blockValid.work) {
+            document.querySelector('.tabs').style.display = 'none';
+            document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+            document.getElementById('patternsProgress').style.display = 'none';
+            unlockBtn.style.display = 'none';
+            stageBadge.innerText = '🎮 Игра: перетащите карточку в столбец';
+            gameZone.classList.add('visible');
+            resetGame();
+        } else {
+            alert('Сначала добейтесь зелёных статусов во всех трёх блоках паттернов!');
+        }
+    }
+
+    function bindPatternButtons() {
+        document.querySelectorAll('.check-block-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = btn.getAttribute('data-type');
+                checkBlock(type);
+            });
+        });
+    }
+
+    // Инициализация
+    function init() {
+        // При каждом запуске порядок элементов в списках паттернов будет случайным
+        buildPatternList('accident', 'accidentList');
+        buildPatternList('incident', 'incidentList');
+        buildPatternList('work', 'workList');
+        bindPatternButtons();
+        initTabs();
+        updateUnlockButton();
+        unlockBtn.addEventListener('click', unlockGame);
+        checkGameBtn.addEventListener('click', checkGame);
+        resetGameBtn.addEventListener('click', resetGame);
+        setupDropTargets();
+    }
+
+    init();
+</script>
+</body>
+</html>
